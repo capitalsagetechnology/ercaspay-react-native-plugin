@@ -1,6 +1,6 @@
 {
   "name": "react-native-ercaspay",
-  "version": "2.0.0",
+  "version": "2.0.5",
   "description": "react native expo ercaspay library",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
