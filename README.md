@@ -1,7 +1,9 @@
 # react-native-ercaspay
 
-#### Reeact Native Expo Ercaspay Library
+#### React Native Expo Ercaspay Library
 ##### NB: This library currently works on react native expo, it has not yet been tested on react native cli. However, it should work on react native cli. Future updates would be tested on react native cli
+
+######
 
 This package lets you accept payments with Ercaspay in a snap! Just install, add your keys, and you’re good to go—no headaches here! Plus, it’s officially created at Ercaspay Hackaton 2024, so you know you’re in good hands. Payment processing has never been this easy! 
 
