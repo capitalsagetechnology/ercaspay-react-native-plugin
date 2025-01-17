@@ -1,34 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-
-// import Config from "react-native-config";
-
-interface PaymentFormProps {
-  amount: number;
-  paymentReference: string;
-  paymentMethods: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhoneNumber: string;
-  redirectUrl: string;
-  description: string;
-  currency: string;
-  feeBearer: string;
-  metadata: {
-    firstname: string;
-    lastname: string;
-    email: string;
-  };
-  secretKey: string;
-}
+import type { PaymentFormProps } from './types/types';
+import { paymentFormStyles as styles } from './styles/style';
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
   amount,
@@ -44,18 +24,28 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   metadata,
   secretKey,
 }) => {
-  const [firstname, setFirstname] = useState(metadata.firstname);
-  const [lastname, setLastname] = useState(metadata.lastname);
-  const [email, setEmail] = useState(metadata.email);
-  const [amountValue, setAmountValue] = useState(amount.toString());
+  const [firstname, setFirstname] = useState(metadata?.firstname ?? '');
+  const [lastname, setLastname] = useState(metadata?.lastname ?? '');
+  const [email, setEmail] = useState(metadata?.email ?? '');
+  const [amountValue, setAmountValue] = useState(amount?.toString() ?? '');
   const [loading, setLoading] = useState(false);
   const [responseUrl, setResponseUrl] = useState('');
 
   const handleFormSubmit = async () => {
     setLoading(true);
-    // Access environment variable
-    // const apiURL = Config.API_URL;
-    // console.log(apiURL);
+    try {
+      const data = await initiatePayment();
+      if (data.requestSuccessful) {
+        setResponseUrl(data.responseBody.checkoutUrl);
+      } else {
+        console.error('Payment failed:', data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initiatePayment = async () => {
     try {
       const response = await fetch(
         'https://api.merchant.staging.ercaspay.com/api/v1/payment/initiate',
@@ -85,26 +75,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         }
       );
 
-      const data = await response.json();
-      if (data.requestSuccessful === true) {
-        setLoading(false);
-        console.log(data);
-        console.log(data.responseBody.checkoutUrl);
-        setResponseUrl(data.responseBody.checkoutUrl);
-      } else {
-        setLoading(false);
-        console.error('Payment failed:', data);
-      }
+      return await response.json();
     } catch (error) {
-      setLoading(false);
       console.error('Error:', error);
+      throw error;
     }
   };
 
-  const handleLoad = () => {
-    console.log('Webview Loaded');
-    console.log(responseUrl);
-  };
+  const handleLoad = () => console.log('Webview Loaded');
+
+  const webViewSource = useMemo(() => {
+    if (responseUrl !== '') {
+      return { uri: responseUrl };
+    }
+    return null;
+  }, [responseUrl]);
 
   return (
     <View style={styles.container}>
@@ -112,23 +97,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         <Text>Secured by Ercaspay</Text>
         <TextInput
           value={firstname}
-          onChangeText={(text) => setFirstname(text)}
+          onChangeText={setFirstname}
           placeholder="Firstname"
+          style={styles.textInput}
         />
         <TextInput
           value={lastname}
-          onChangeText={(text) => setLastname(text)}
+          onChangeText={setLastname}
           placeholder="Lastname"
+          style={styles.textInput}
         />
         <TextInput
           value={email}
-          onChangeText={(text) => setEmail(text)}
+          onChangeText={setEmail}
           placeholder="Email"
+          style={styles.textInput}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
         <TextInput
           value={amountValue}
-          onChangeText={(text) => setAmountValue(text)}
+          onChangeText={setAmountValue}
           placeholder="Amount"
+          style={styles.textInput}
           keyboardType="numeric"
         />
         <TouchableOpacity
@@ -145,20 +136,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           <View style={styles.webViewLoading}>
             <Text style={styles.webViewTextLoading}>Loading...</Text>
             <ActivityIndicator
-              style={styles.container}
               size="large"
-              // color="#0000ff"
               color="orange"
+              style={styles.container}
             />
           </View>
         )}
-        {responseUrl !== '' && (
+        {webViewSource && (
           <WebView
-            source={{ uri: responseUrl }}
+            source={webViewSource}
             onLoad={handleLoad}
             style={styles.webView}
             scalesPageToFit={true}
-            injectJavaScript={`const meta = document.createElement('meta'); meta.setAttribute('name', 'viewport'); meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'); document.getElementsByTagName('head')[0].appendChild(meta);`}
+            injectJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('name', 'viewport');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+            `}
           />
         )}
       </View>
@@ -167,49 +162,3 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 };
 
 export default PaymentForm;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  formContainer: {
-    padding: 20,
-    backgroundColor: '#f9f9f9',
-    borderColor: '#ddd',
-    borderTopWidth: 1,
-  },
-  textInput: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  webViewContainer: {
-    flex: 1,
-  },
-  webView: {
-    flex: 1,
-  },
-  webViewLoading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  webViewTextLoading: {
-    textAlign: 'center',
-    marginTop: 30,
-  },
-  payBtn: {
-    backgroundColor: '#FF9900', // deeper orange color
-    paddingVertical: 8,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    marginBottom: 0,
-  },
-  payText: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'center',
-  },
-});
